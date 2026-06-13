@@ -1,0 +1,3 @@
+display_name: 曹操
+short_description: 用曹操的官渡之战模型分析古今战略决策
+default_prompt: 请用曹操的思维决策模型分析这个问题。
