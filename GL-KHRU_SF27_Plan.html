@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GL-KHRU Capacity vs Orders — S27</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f4f0; color: #1a1a18; font-size: 14px; line-height: 1.5; }
+.page { max-width: 1020px; margin: 0 auto; padding: 32px 24px 72px; }
+
+/* ── Header ── */
+.header { margin-bottom: 28px; border-bottom: 1.5px solid #d3d1c7; padding-bottom: 20px; }
+.header h1 { font-size: 22px; font-weight: 600; color: #1a1a18; }
+.header p  { font-size: 13px; color: #5f5e5a; margin-top: 4px; }
+.badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.04em; }
+.badge-s27  { background: #e6f1fb; color: #185fa5; }
+.badge-f27  { background: #e1f5ee; color: #0f6e56; }
+.badge-info { background: #f1efe8; color: #5f5e5a; }
+
+/* ── Metric cards ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
+.card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 10px; padding: 14px 16px; }
+.card-label { font-size: 11px; color: #888780; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.card-value { font-size: 22px; font-weight: 600; color: #1a1a18; }
+.card-sub   { font-size: 11px; color: #888780; margin-top: 3px; }
+
+/* ── Section titles ── */
+.section-title { font-size: 11px; font-weight: 600; color: #5e5d5a; text-transform: uppercase; letter-spacing: 0.06em; margin: 32px 0 10px; }
+.section-divider { border: none; border-top: 1.5px solid #d3d1c7; margin: 40px 0 32px; }
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.tab-btn { font-size: 12px; padding: 5px 14px; cursor: pointer; border: 0.5px solid #b4b2a9; background: #fff; color: #5f5e5a; border-radius: 6px; font-family: inherit; transition: all 0.15s; }
+.tab-btn:hover { background: #f1efe8; }
+.tab-btn.active { background: #1a1a18; color: #fff; border-color: #1a1a18; font-weight: 500; }
+
+/* ── Chart ── */
+.chart-wrap { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 10px; padding: 20px; margin-bottom: 8px; }
+.chart-legend { display: flex; gap: 18px; margin-bottom: 10px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5f5e5a; }
+.legend-sq   { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.legend-line { width: 20px; height: 0; border-top: 2px dashed #888780; flex-shrink: 0; }
+.chart-title { font-size: 13px; font-weight: 500; color: #1a1a18; margin-bottom: 14px; }
+.canvas-container { position: relative; width: 100%; height: 280px; }
+
+/* ── Gap table ── */
+table { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; border: 0.5px solid #d3d1c7; border-radius: 10px; overflow: hidden; }
+thead tr { background: #f5f4f0; }
+th { font-size: 11px; font-weight: 600; color: #888780; padding: 8px 12px; text-align: right; border-bottom: 1px solid #d3d1c7; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.04em; }
+th:first-child { text-align: left; }
+td { padding: 7px 12px; text-align: right; border-bottom: 0.5px solid #ebebeb; color: #1a1a18; }
+td:first-child { text-align: left; font-weight: 500; }
+tfoot td { font-weight: 600; border-top: 1.5px solid #d3d1c7; border-bottom: none; background: #f5f4f0; }
+.pill { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+.pill-over    { background: #fcebeb; color: #a32d2d; }
+.pill-tight   { background: #faeeda; color: #854f0b; }
+.pill-surplus { background: #eaf3de; color: #3b6d11; }
+.gap-pos { color: #3b6d11; font-weight: 600; }
+.gap-neg { color: #a32d2d; font-weight: 600; }
+.legend-note { font-size: 11px; color: #888780; margin-top: 8px; padding: 8px 12px; background: #f5f4f0; border-radius: 6px; }
+
+/* ── Line detail section ── */
+.line-section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+.line-section-header h2 { font-size: 16px; font-weight: 600; color: #1a1a18; }
+.line-section-header span { font-size: 12px; color: #888780; }
+
+.season-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.season-block { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 10px; overflow: hidden; }
+.season-block-header { padding: 12px 16px 10px; border-bottom: 1px solid #ebebeb; display: flex; align-items: center; gap: 10px; }
+.season-block-header .season-label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 4px; }
+.s27-label { background: #e6f1fb; color: #185fa5; }
+.f27-label { background: #e1f5ee; color: #0f6e56; }
+.season-block-header .months-range { font-size: 11px; color: #888780; }
+
+.line-detail-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.line-detail-table th { font-size: 10px; font-weight: 600; color: #888780; padding: 6px 10px; text-align: right; border-bottom: 0.5px solid #ebebeb; background: #fafaf8; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.line-detail-table th:first-child { text-align: left; }
+.line-detail-table td { padding: 5px 10px; text-align: right; border-bottom: 0.5px solid #f0eeea; color: #1a1a18; }
+.line-detail-table td:first-child { text-align: left; font-weight: 500; font-size: 11px; }
+.line-detail-table tr:last-child td { border-bottom: none; }
+.line-detail-table .group-sep td { border-top: 1px solid #d3d1c7; background: #f5f4f0; font-weight: 600; font-size: 10px; color: #888780; text-transform: uppercase; letter-spacing: 0.04em; }
+.line-detail-table .total-row td { background: #f5f4f0; font-weight: 600; border-top: 1.5px solid #d3d1c7; font-size: 11px; }
+.speed-cell { font-variant-numeric: tabular-nums; }
+.inactive { color: #c8c6be; font-style: italic; }
+
+.slice-tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 4px; letter-spacing: 0.04em; vertical-align: middle; }
+.tag-inline { background: #e6f1fb; color: #185fa5; }
+.tag-lowmel { background: #e1f5ee; color: #0f6e56; }
+.tag-lean   { background: #faece7; color: #993c1d; }
+
+.summary-row-wrap { display: grid; grid-template-columns: repeat(3,1fr); gap: 0; border-top: 1px solid #ebebeb; }
+.summary-cell { padding: 10px 12px; text-align: center; border-right: 0.5px solid #ebebeb; }
+.summary-cell:last-child { border-right: none; }
+.summary-cell-label { font-size: 10px; color: #888780; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+.summary-cell-value { font-size: 14px; font-weight: 600; color: #1a1a18; }
+
+.workdays-bar-wrap { padding: 14px 16px 6px; border-top: 1px solid #ebebeb; }
+.workdays-bar-label { font-size: 10px; color: #888780; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+.wd-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.wd-month { font-size: 10px; color: #5f5e5a; width: 44px; flex-shrink: 0; }
+.wd-bar-bg { flex: 1; background: #f1efe8; border-radius: 3px; height: 14px; position: relative; }
+.wd-bar-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 6px; }
+.wd-bar-text { font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; }
+
+@media(max-width: 680px) {
+  .season-cols { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <h1>GL-KHRU · Capacity vs Orders</h1>
+    <p>10-hour shift · full-month working days · S27 season forecast + line detail</p>
+    <div class="badges">
+      <span class="badge badge-s27">S27: Sep-26 → Feb-27</span>
+      <span class="badge badge-f27">F27 preview: Mar-27 onward</span>
+      <span class="badge badge-info">Capacity file: S27_F27产能分析表-20260603</span>
+      <span class="badge badge-info">Orders: UGG_S27_Forecast_202605</span>
+      <span class="badge" style="background:#faeeda;color:#854f0b;">⚠ Scenario: +30K Lowmel remaining orders from Aug-26 → assigned to Sep-26</span>
+    </div>
+  </div>
+
+  <!-- ── Metric cards ── -->
+  <div class="cards" id="metricCards"></div>
+
+  <!-- ── Slice chart ── -->
+  <p class="section-title">Capacity vs order demand by group</p>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('inline')" id="tab-inline">Inline (standard)</button>
+    <button class="tab-btn"       onclick="switchTab('lowmel')" id="tab-lowmel">Lowmel 胖胖</button>
+    <button class="tab-btn"       onclick="switchTab('lean')"   id="tab-lean">Lean · Tasman / Scuffette</button>
+    <button class="tab-btn"       onclick="switchTab('total')"  id="tab-total">All groups</button>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-legend" id="chartLegend"></div>
+    <div class="chart-title"  id="chartTitle"></div>
+    <div class="canvas-container">
+      <canvas id="sliceChart" role="img" aria-label="Capacity vs orders bar chart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Gap table ── -->
+  <p class="section-title">Gap analysis — capacity minus orders (pairs, 10hr full-month)</p>
+  <table id="gapTable"></table>
+  <p class="legend-note">Gap = capacity − remaining orders − forecast. Remaining orders shown in amber. Utilisation = (remaining orders + forecast) ÷ capacity.</p>
+
+  <!-- ── Divider ── -->
+  <hr class="section-divider">
+
+  <!-- ── Line Detail ── -->
+  <div class="line-section-header">
+    <h2>Production line detail</h2>
+    <span>GL-KHRU · speed (pairs/hr per line) · 10hr shift · full-month working days</span>
+  </div>
+
+  <div class="season-cols">
+
+    <!-- S27 block -->
+    <div class="season-block">
+      <div class="season-block-header">
+        <span class="season-label s27-label">S27</span>
+        <span class="months-range">Sep-26 · Oct-26 · Nov-26 · Dec-26 · Jan-27 · Feb-27</span>
+      </div>
+      <table class="line-detail-table">
+        <thead>
+          <tr>
+            <th>Line</th>
+            <th>Sep-26</th><th>Oct-26</th><th>Nov-26</th><th>Dec-26</th><th>Jan-27</th><th>Feb-27</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="group-sep"><td colspan="7">Inline · standard group <span class="slice-tag tag-inline">INLINE</span></td></tr>
+          <tr><td>Line 1 (B)</td><td>220</td><td>220</td><td>220</td><td>220</td><td>220</td><td>220</td></tr>
+          <tr><td>Line 2 (C)</td><td>220</td><td>220</td><td>220</td><td>220</td><td>220</td><td>220</td></tr>
+          <tr><td>Line 3 (G)</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+          <tr><td>Line 4 (7*)</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+
+          <tr class="group-sep"><td colspan="7">Lowmel · 胖胖 group <span class="slice-tag tag-lowmel">LOWMEL</span></td></tr>
+          <tr><td>Line 5 (D)</td><td>220</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+          <tr><td>Line 6 (E)</td><td>220</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+          <tr><td>Line 7 (F)</td><td>180</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+
+          <tr class="group-sep"><td colspan="7">Lean · Tasman / Scuffette group <span class="slice-tag tag-lean">LEAN</span></td></tr>
+          <tr><td>Line 8 (8*)</td><td>180</td><td>180</td><td>180</td><td>180</td><td>180</td><td>180</td></tr>
+          <tr><td>Line 9 (9*)</td><td class="inactive">—</td><td class="inactive">—</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+          <tr><td>Line 10 (10*)</td><td class="inactive">—</td><td class="inactive">—</td><td class="inactive">—</td><td class="inactive">—</td><td>200</td><td>200</td></tr>
+
+          <tr class="total-row">
+            <td>Total speed/hr</td><td>1,640</td><td>1,620</td><td>1,820</td><td>1,820</td><td>2,020</td><td>2,020</td>
+          </tr>
+          <tr class="total-row">
+            <td>Active lines</td><td>8</td><td>8</td><td>9</td><td>9</td><td>10</td><td>10</td>
+          </tr>
+          <tr class="total-row">
+            <td>Output/hr</td><td>205</td><td>202.5</td><td>202.2</td><td>202.2</td><td>202</td><td>202</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Working days bar -->
+      <div class="workdays-bar-wrap">
+        <div class="workdays-bar-label">Working days (full-month)</div>
+        <div id="wdBarsS27"></div>
+      </div>
+
+      <!-- Gap summary -->
+      <div class="summary-row-wrap">
+        <div class="summary-cell">
+          <div class="summary-cell-label">Inline gap (S27)</div>
+          <div class="summary-cell-value" style="color:#3b6d11">+1,113K</div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-cell-label">Lowmel gap (S27)</div>
+          <div class="summary-cell-value" style="color:#3b6d11">+606K</div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-cell-label">Lean gap (S27)</div>
+          <div class="summary-cell-value" style="color:#3b6d11">+280K</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F27 block -->
+    <div class="season-block">
+      <div class="season-block-header">
+        <span class="season-label f27-label">F27</span>
+        <span class="months-range">Mar-27 · Apr-27 · May-27 · Jun-27 · Jul-27 · Aug-27</span>
+      </div>
+      <table class="line-detail-table">
+        <thead>
+          <tr>
+            <th>Line</th>
+            <th>Mar-27</th><th>Apr-27</th><th>May-27</th><th>Jun-27</th><th>Jul-27</th><th>Aug-27</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="group-sep"><td colspan="7">Inline · standard group <span class="slice-tag tag-inline">INLINE</span></td></tr>
+          <tr><td>Line 1 (B)</td><td>150</td><td>150</td><td>150</td><td>150</td><td>150</td><td>150</td></tr>
+          <tr><td>Line 2 (C)</td><td>150</td><td>150</td><td>150</td><td>150</td><td>150</td><td>150</td></tr>
+          <tr><td>Line 3 (G)</td><td>150</td><td>150</td><td>150</td><td>150</td><td>150</td><td>150</td></tr>
+          <tr><td>Line 4 (7*)</td><td>150</td><td>150</td><td>150</td><td>150</td><td>150</td><td>150</td></tr>
+
+          <tr class="group-sep"><td colspan="7">Lowmel · 胖胖 group <span class="slice-tag tag-lowmel">LOWMEL</span></td></tr>
+          <tr><td>Line 5 (D)</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+          <tr><td>Line 6 (E)</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+          <tr><td>Line 7 (F)</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td><td>200</td></tr>
+
+          <tr class="group-sep"><td colspan="7">Lean · Tasman / Scuffette group <span class="slice-tag tag-lean">LEAN</span></td></tr>
+          <tr><td>Line 8 (8*)</td><td>200</td><td>200</td><td>230</td><td>230</td><td>230</td><td>230</td></tr>
+          <tr><td>Line 9 (9*)</td><td>200</td><td>230</td><td>230</td><td>230</td><td>230</td><td>230</td></tr>
+          <tr><td>Line 10 (10*)</td><td>230</td><td>230</td><td>230</td><td>230</td><td>230</td><td>230</td></tr>
+
+          <tr class="total-row">
+            <td>Total speed/hr</td><td>1,830</td><td>1,860</td><td>1,890</td><td>1,890</td><td>1,890</td><td>1,890</td>
+          </tr>
+          <tr class="total-row">
+            <td>Active lines</td><td>10</td><td>10</td><td>10</td><td>10</td><td>10</td><td>10</td>
+          </tr>
+          <tr class="total-row">
+            <td>Output/hr</td><td>183</td><td>186</td><td>189</td><td>189</td><td>189</td><td>189</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Working days bar -->
+      <div class="workdays-bar-wrap">
+        <div class="workdays-bar-label">Working days (full-month)</div>
+        <div id="wdBarsF27"></div>
+      </div>
+
+      <!-- Gap summary -->
+      <div class="summary-row-wrap">
+        <div class="summary-cell">
+          <div class="summary-cell-label">Inline gap (F27)</div>
+          <div class="summary-cell-value" style="color:#3b6d11">+873K</div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-cell-label">Lowmel gap (F27)</div>
+          <div class="summary-cell-value" style="color:#3b6d11">+874K</div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-cell-label">Lean gap (F27)</div>
+          <div class="summary-cell-value" style="color:#3b6d11">+976K</div>
+        </div>
+      </div>
+      <div style="padding:8px 14px 10px; font-size:10px; color:#888780; background:#fafaf8; border-top:0.5px solid #ebebeb;">
+        ⚠ Orders only confirmed for Mar-27. Apr–Aug gaps will reduce as F27 orders are loaded.
+      </div>
+    </div>
+
+  </div><!-- /season-cols -->
+
+</div><!-- /page -->
+
+<script>
+/* ════════════════════════════════════════
+   DATA
+════════════════════════════════════════ */
+const months   = ['Sep-26','Oct-26','Nov-26','Dec-26','Jan-27','Feb-27','Mar-27'];
+const workDays = [25, 23, 21, 26, 24, 24, 26];
+
+const cap = {
+  inline: [210000,193200,176400,218400,201600,201600,156000],
+  lowmel: [155000,138000,126000,156000,144000,144000,156000],
+  lean:   [ 45000, 41400, 79800, 98800,139200,139200,163800],
+};
+cap.total = months.map((_,i) => cap.inline[i]+cap.lowmel[i]+cap.lean[i]);
+
+// Forecast: from UGG_S27_Forecast_202605
+const forecast = {
+  inline: [0,     16033, 31952, 22972, 11277,  5763, 2566],
+  lowmel: [42194, 89090, 61743, 20755,  8609,  4689, 2012],
+  lean:   [16300,123195, 82458, 19124, 13993,  8525, 9756],
+};
+forecast.total = months.map((_,i) => forecast.inline[i]+forecast.lowmel[i]+forecast.lean[i]);
+
+// Remaining orders: real firm orders (30K Lowmel delayed from Aug-26 → Sep-26)
+const remaining = {
+  inline: [0,     0, 0, 0, 0, 0, 0],
+  lowmel: [30000, 0, 0, 0, 0, 0, 0],
+  lean:   [0,     0, 0, 0, 0, 0, 0],
+};
+remaining.total = months.map((_,i) => remaining.inline[i]+remaining.lowmel[i]+remaining.lean[i]);
+
+const palette = {
+  inline: { cap:'#185FA5', ord:'#85B7EB', conf:'#F5A623' },
+  lowmel: { cap:'#1D9E75', ord:'#5DCAA5', conf:'#F5A623' },
+  lean:   { cap:'#D85A30', ord:'#F0997B', conf:'#F5A623' },
+  total:  { cap:'#534AB7', ord:'#AFA9EC', conf:'#F5A623' },
+};
+const labelMap = {
+  inline: 'Inline — standard last (lines 1–4)',
+  lowmel: 'Lowmel 胖胖 — wide last (lines 5–7)',
+  lean:   'Lean — Tasman / Scuffette (lines 8–10)',
+  total:  'All slices combined',
+};
+
+/* ════════════════════════════════════════
+   METRIC CARDS
+════════════════════════════════════════ */
+const totCap  = cap.total.reduce((a,b)=>a+b,0);
+const totFc   = forecast.total.reduce((a,b)=>a+b,0);
+const totRem  = remaining.total.reduce((a,b)=>a+b,0);
+const totDemand = totFc + totRem;
+const gap    = totCap - totDemand;
+const util   = Math.round(totDemand/totCap*100);
+function fmtM(n){ return (n/1000000).toFixed(2)+'M'; }
+function fmtK(n){ return Math.abs(n)>=1000 ? (n/1000).toFixed(0)+'K' : String(n); }
+const cardData = [
+  {label:'Total capacity',    value: fmtM(totCap),  sub:'pairs · 7 months · 10hr'},
+  {label:'Total forecast',    value: fmtK(totFc),   sub:'pairs from UGG S27 forecast'},
+  {label:'Remaining orders',  value: fmtK(totRem),  sub:'firm remaining orders loaded'},
+  {label:'Overall gap',       value: (gap>=0?'+':'')+fmtK(gap), sub: gap>=0?'cap − forecast − remaining':'over-committed'},
+  {label:'⚠ Lean Oct-26',    value: '123K',         sub:'forecast vs 41K cap'},
+];
+cardData.forEach(c => {
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.innerHTML = `<div class="card-label">${c.label}</div><div class="card-value">${c.value}</div><div class="card-sub">${c.sub}</div>`;
+  document.getElementById('metricCards').appendChild(d);
+});
+
+/* ════════════════════════════════════════
+   CHART
+════════════════════════════════════════ */
+let chart, activeSlice = 'inline';
+
+function buildChart(slice){
+  if(chart) chart.destroy();
+  const capD  = cap[slice];
+  const fcD   = forecast[slice];
+  const remD  = remaining[slice];
+  const col   = palette[slice];
+  const gapD  = capD.map((c,i) => c - fcD[i] - remD[i]);
+
+  document.getElementById('chartTitle').textContent = labelMap[slice];
+  document.getElementById('chartLegend').innerHTML = `
+    <span class="legend-item"><span class="legend-sq" style="background:${col.cap}"></span>Capacity</span>
+    <span class="legend-item"><span class="legend-sq" style="background:${col.conf}"></span>Remaining orders</span>
+    <span class="legend-item"><span class="legend-sq" style="background:${col.ord}"></span>Forecast</span>
+    <span class="legend-item"><span class="legend-line"></span>Gap</span>`;
+
+  chart = new Chart(document.getElementById('sliceChart'),{
+    type:'bar',
+    data:{
+      labels: months,
+      datasets:[
+        {label:'Capacity',         data:capD, backgroundColor:col.cap,  borderRadius:3, order:2},
+        {label:'Remaining orders', data:remD, backgroundColor:col.conf, borderRadius:3, order:3},
+        {label:'Forecast',         data:fcD,  backgroundColor:col.ord,  borderRadius:3, order:4},
+        {label:'Gap', data:gapD, type:'line',
+          borderColor:'#888780', borderDash:[4,3], pointRadius:5, fill:false, order:1,
+          pointBackgroundColor:gapD.map(g=>g<0?'#E24B4A':'#639922'),
+          pointBorderColor:    gapD.map(g=>g<0?'#E24B4A':'#639922')},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString()} pairs`}}
+      },
+      scales:{
+        x:{ticks:{autoSkip:false, maxRotation:35, font:{size:11}}, grid:{display:false}},
+        y:{ticks:{callback:v=>fmtK(v), font:{size:11}}, grid:{color:'rgba(0,0,0,0.06)'}}
+      }
+    }
+  });
+}
+
+/* ════════════════════════════════════════
+   GAP TABLE
+════════════════════════════════════════ */
+function buildTable(){
+  const slice=activeSlice, capArr=cap[slice], fcArr=forecast[slice], remArr=remaining[slice];
+  let totC=0, totF=0, totRem=0;
+  const hdr=`<thead><tr>
+    <th>Month</th><th>Work days</th><th>Capacity</th>
+    <th>Remaining orders</th><th>Forecast</th>
+    <th>Gap</th><th>Utilisation</th>
+  </tr></thead>`;
+  const rows=months.map((m,i)=>{
+    const c=capArr[i], f=fcArr[i], rem=remArr[i];
+    const g = c - rem - f;
+    const totalDemand = rem + f;
+    const u = c>0 ? Math.round(totalDemand/c*100) : 0;
+    totC+=c; totF+=f; totRem+=rem;
+    const cls = g<0?'pill-over':(u>80?'pill-tight':'pill-surplus');
+    const lbl = g<0?'over':(u>80?'tight':'surplus');
+    const remTd = rem>0
+      ? `<td style="color:#854f0b;font-weight:600">${rem.toLocaleString()}</td>`
+      : `<td style="color:#c8c6be">—</td>`;
+    return `<tr>
+      <td>${m}</td>
+      <td style="color:#888780">${workDays[i]}</td>
+      <td>${c.toLocaleString()}</td>
+      ${remTd}
+      <td>${f.toLocaleString()}</td>
+      <td class="${g<0?'gap-neg':'gap-pos'}">${g>=0?'+':''}${g.toLocaleString()}</td>
+      <td><span class="pill ${cls}">${u}% · ${lbl}</span></td>
+    </tr>`;
+  }).join('');
+  const totG = totC - totRem - totF;
+  const foot=`<tfoot><tr>
+    <td>Total</td><td>—</td>
+    <td>${totC.toLocaleString()}</td>
+    <td>${totRem.toLocaleString()}</td>
+    <td>${totF.toLocaleString()}</td>
+    <td class="${totG<0?'gap-neg':'gap-pos'}">${totG>=0?'+':''}${totG.toLocaleString()}</td>
+    <td>${Math.round((totRem+totF)/totC*100)}% overall</td>
+  </tr></tfoot>`;
+  document.getElementById('gapTable').innerHTML=hdr+'<tbody>'+rows+'</tbody>'+foot;
+}
+
+function switchTab(slice){
+  activeSlice=slice;
+  ['inline','lowmel','lean','total'].forEach(s=>{
+    document.getElementById('tab-'+s).classList.toggle('active',s===slice);
+  });
+  buildChart(slice);
+  buildTable();
+}
+
+/* ════════════════════════════════════════
+   WORKING DAYS BARS
+════════════════════════════════════════ */
+function renderWdBars(containerId, monthLabels, days, color){
+  const maxD = Math.max(...days);
+  const el = document.getElementById(containerId);
+  el.innerHTML = monthLabels.map((m,i)=>{
+    const pct = Math.round(days[i]/maxD*100);
+    return `<div class="wd-row">
+      <span class="wd-month">${m}</span>
+      <div class="wd-bar-bg">
+        <div class="wd-bar-fill" style="width:${pct}%;background:${color}">
+          <span class="wd-bar-text">${days[i]}d</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+renderWdBars('wdBarsS27',
+  ['Sep-26','Oct-26','Nov-26','Dec-26','Jan-27','Feb-27'],
+  [25,23,21,26,24,24], '#185FA5');
+
+renderWdBars('wdBarsF27',
+  ['Mar-27','Apr-27','May-27','Jun-27','Jul-27','Aug-27'],
+  [26,20,22,25,27,26], '#1D9E75');
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+buildChart('inline');
+buildTable();
+</script>
+</body>
+</html>
